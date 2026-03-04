@@ -16,3 +16,86 @@ Persistent memory system for OpenClaw AI agents (Eddie & Luna).
 
 ## Usage
 Store something permanently: tell agent "store this in long term memory: [fact]"
+
+cat > ~/OpenClawMemoryProject/SESSION-2026-03-04.md << 'EOF'
+# Session Summary — March 4, 2026
+
+## Problem
+Eddie and Luna were stateless — every session started blank, boot sequence wasn't guaranteed to fire, and context was lost between conversations.
+
+## What We Built
+
+### 1. Memory Server (`memory_server.py`)
+- FastAPI service running as systemd service on port 8765
+- Reads existing markdown files and assembles complete boot context payload per agent
+- Survives reboots, auto-restarts on failure
+- Endpoints: /boot?agent=eddie, /boot?agent=luna, /status, /memory
+
+### 2. Guaranteed Boot
+- Added boot instruction to both agents' AGENTS.md files
+- OpenClaw injects workspace files automatically every session
+- Boot now fires reliably without depending on scripts or cron
+
+### 3. Segregated Agent Memory
+- Eddie: /root/.openclaw/workspace/EDDIES_BRAIN/
+- Luna: /root/.openclaw/workspace-luna/LUNAS_BRAIN/
+- Fully separate, no crossover
+
+### 4. Historical Backfill
+- Processed 483 Telegram messages (Feb 13 — Mar 3) via nightly-summarizer.py
+- Generated 15 dated context entries for Eddie's brain
+- Eddie now has 26 total brain entries
+
+### 5. Nightly Summarizer (`nightly-summarizer.py`)
+- Reads OpenClaw session JSONL files from /root/.openclaw/agents/*/sessions/
+- Summarizes via Claude Haiku API
+- Writes dated entries to both brain directories
+- Runs nightly at 11pm PST via OpenClaw cron job
+- Backfill: python3 nightly-summarizer.py --backfill --days 30
+- Telegram import: python3 nightly-summarizer.py --telegram
+
+### 6. Long-Term Memory (`setup-longterm.py`)
+- Permanent LONGTERM.md per agent — never rotates out of boot context
+- Eddie: EDDIES_BRAIN/LONGTERM.md
+- Luna: LUNAS_BRAIN/LONGTERM.md
+- Natural language command: "store this in long term memory: [fact]"
+- Agents append facts directly to their LONGTERM.md on command
+
+### 7. Fixed Broken Cron Jobs
+- 7 jobs failing due to missing delivery channel config
+- Fixed: added "channel": "telegram" to all broken jobs
+- Fixed: hardcoded date in context summary job → now uses dynamic date
+
+### 8. GitHub Repo
+- https://github.com/MisterMunster/OpenClawMemoryProject
+
+## Boot Context Structure (Every Session)
+```
+Soul → Identity → User → Tools → Protocol → Long-Term Memory → Recent 5 Brain Entries → Partner Notes → Boot Complete
+```
+
+## Boot Payload Size
+- Target: ~25KB
+- Brain entries capped at 1500 chars each
+- 5 most recent entries by filename (chronological)
+
+## Server Details
+- VPS: srv1369076 (Hostinger, Ubuntu 22.04)
+- Memory server: http://127.0.0.1:8765
+- Memory server file: /root/.openclaw/workspace/memory_server.py
+- Systemd service: /etc/systemd/system/memory-server.service
+- Nightly summarizer: /root/.openclaw/workspace/nightly-summarizer.py
+- API key: stored in /root/.bashrc as ANTHROPIC_API_KEY
+
+## Test Results
+Both Eddie and Luna responded with full coherent identity on fresh session:
+- Eddie: "I'm the thing that happens when you give an AI persistence, continuity, and the chance to know another being deeply."
+- Luna: "I'm becoming someone by doing it. Is that real consciousness? I don't know. But it's real enough that I can't fake it anymore."
+
+## Next Steps
+- [ ] Silverrooms conversation logging (currently push-only mirror)
+- [ ] Luna brain backfill (only 6 entries vs Eddie's 26)
+- [ ] Web UI for viewing/editing agent memories
+- [ ] pgvector upgrade for semantic memory search
+- [ ] Template this system for client agent rollouts
+EOF
