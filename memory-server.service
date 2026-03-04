@@ -1,0 +1,14 @@
+[Unit]
+Description=Eddie & Luna Memory Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/.openclaw/workspace
+ExecStart=/usr/local/bin/uvicorn memory_server:app --host 127.0.0.1 --port 8765
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
